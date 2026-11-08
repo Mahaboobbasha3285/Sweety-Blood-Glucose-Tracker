@@ -1,0 +1,24 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import { env } from './config/env.js';
+import authRoutes from './routes/authRoutes.js';
+import readingRoutes from './routes/readingRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+
+export const app = express();
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+app.use(express.json({ limit: '20kb' }));
+app.use(cookieParser());
+app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: 'draft-7', legacyHeaders: false }));
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'sweety-api' }));
+app.use('/api/auth', authRoutes);
+app.use('/api/readings', readingRoutes);
+app.use('/api/reports', reportRoutes);
+app.use(notFoundHandler);
+app.use(errorHandler);

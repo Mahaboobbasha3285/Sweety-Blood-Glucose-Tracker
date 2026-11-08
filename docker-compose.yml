@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sweety
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - sweety_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sweety"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/sweety?schema=public
+      CLIENT_ORIGIN: http://localhost:8080
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env file}
+      JWT_EXPIRES_IN: 1d
+      COOKIE_NAME: sweety_token
+      APP_TIMEZONE: Asia/Kolkata
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: http://localhost:5000/api
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  sweety_postgres:
